@@ -183,7 +183,7 @@ class ListNode extends Node[mutable.ListBuffer[String]] {
   /**
    * Set of blocked Command instances awaiting a response.
    */
-  var blocked = mutable.LinkedHashSet[Command]()
+  val blocked = mutable.LinkedHashSet[Command]()
 
   /**
    * Called on each of the blocking commands, storing the received

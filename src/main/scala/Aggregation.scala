@@ -96,7 +96,7 @@ abstract class Aggregate[T](val commandName: String) extends Actor with CommandP
   /**
    * Responses received mapped to Command IDs.
    */
-  var responses = mutable.Map[String, T]()
+  var responses = Map[String, T]()
 
   /**
    * Ordered set of keys dealt with by the initial Command, used to
@@ -141,7 +141,8 @@ abstract class Aggregate[T](val commandName: String) extends Actor with CommandP
       // key for the responses map, so we just use the (growing) size
       // of the responses map as a unique integer as the key.
       val idOrInt = if (responses.contains(id)) (responses.size + 1).toString else id
-      responses(idOrInt) = value.asInstanceOf[T]
+      // responses(idOrInt) = value.asInstanceOf[T]
+      responses += (idOrInt -> value.asInstanceOf[T])
       if (responses.size == keys.size) {
         respond(Try(complete()) match {
           case Success(response) => response

@@ -60,7 +60,7 @@ abstract class Node[T] extends PersistentActor with CommandProcessing with Actor
    * access the most recently written value when transaction isolation
    * is configued as read-uncommitted.
    */
-  var values = mutable.LinkedHashMap[String, T]("" -> emptyValue)
+  val values = mutable.LinkedHashMap[String, T]("" -> emptyValue)
 
   /**
    * Returns the default value for the type of Node, which subclasses
@@ -464,7 +464,7 @@ class KeyNode extends Node[mutable.Map[String, mutable.Map[String, NodeEntry]]] 
    * Current keys in transaction mapped to client IDs.
    * See transactionAcknowledge/transactionClose for more detail.
    */
-  var transactionKeys = mutable.Map[String, String]()
+  var transactionKeys = Map[String, String]()
 
   /**
    * Shortcut for grabbing the String/NodeEntry map (aka DB) for the
@@ -691,7 +691,7 @@ class KeyNode extends Node[mutable.Map[String, mutable.Map[String, NodeEntry]]] 
    * transactionKeys, and run forwardTransactionToNodes.
    */
   override def beginTransaction(): Any = {
-    if (!inTransaction) command.keys.foreach(key => transactionKeys(key) = command.clientId)
+    if (!inTransaction) command.keys.foreach(key => transactionKeys += (key -> command.clientId))
     super.beginTransaction()
     forwardTransactionToNodes()
   }
@@ -728,6 +728,7 @@ class KeyNode extends Node[mutable.Map[String, mutable.Map[String, NodeEntry]]] 
     if (inTransaction) {
       unstashAll()
       transactionKeys = transactionKeys.filter {case (_, cId) => cId != clientId}
+      // transactionKeys retain { case (_, cId) => cId != clientId }
     }
     super.closeTransaction(clientId, committing)
   }
@@ -854,12 +855,12 @@ abstract class ClientNode extends Node[Null] with PubSubClient with AggregateCom
    * order responses received when multiple commands are in play,
    * eg MULTI/EXEC.
    */
-  var commands = mutable.LinkedHashMap[String, Command]()
+  val commands = mutable.LinkedHashMap[String, Command]()
 
   /**
    * Map of responses that have been received inside a transaction.
    */
-  var responses = mutable.Map[String, Response]()
+  var responses = Map[String, Response]()
 
   /**
    * Flags a validation error occurring for a command inside MULTI/EXEC
@@ -1054,11 +1055,11 @@ abstract class ClientNode extends Node[Null] with PubSubClient with AggregateCom
       // against its ID - this way when the sequence of ordered
       // responses is sent back as one response, clients can determine
       // which command caused the error.
-      commands.keys.foreach(id => responses(id) = Response(null, id))
-      responses(response.id) = response
+      commands.keys.foreach(id => responses += (id -> Response(null, id)))
+      responses += (response.id -> response)
       endTransaction()
     case response: Response =>
-      responses(response.id) = response
+      responses += (response.id -> response)
       // We've received all responses when there's the same number as
       // commands, omitting MULTI and EXEC.
       if (!multi || responses.size == commands.size - 2)
